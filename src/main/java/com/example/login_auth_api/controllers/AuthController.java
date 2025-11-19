@@ -43,7 +43,7 @@ public class AuthController {
 		Optional<User> user = this.repository.findByEmail(body.email());
 
 		if (user.isEmpty()) {
-			if (user.isEmpty()) {
+		
 				User newUser = new User();
 				newUser.setPassword(passwordEncoder.encode(body.password()));
 				newUser.setEmail(body.email());
@@ -53,8 +53,6 @@ public class AuthController {
 			    String token = this.tokenService.generateToken(newUser);
 				return ResponseEntity.ok(new ResponseDto(newUser.getName(), token));
 			
-
-			}
 
 		}
 

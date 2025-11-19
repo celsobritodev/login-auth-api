@@ -21,43 +21,49 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class SecurityFilter extends OncePerRequestFilter {
 
-	@Autowired
-	private TokenService tokenService;
+    @Autowired
+    private TokenService tokenService;
 
-	@Autowired
-	private UserRepository userRepository;
+    @Autowired
+    private UserRepository userRepository;
 
-	@Override
-	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-			throws ServletException, IOException {
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-		var token = this.recoverToken(request);
+        // ✅ IGNORAR rotas públicas (login e register)
+        String path = request.getRequestURI();
+        if (path.equals("/auth/login") || path.equals("/auth/register")) {
+            filterChain.doFilter(request, response);
+            return; // ⬅️ IMPORTANTE: sair do filter para rotas públicas
+        }
 
-		if (token != null) {
-			var login = tokenService.validateToken(token);
+        var token = this.recoverToken(request);
 
-			if (login != null) {
-				User user = userRepository.findByEmail(login).orElseThrow(()->new RuntimeException("User Not Found"));
+        if (token != null) {
+            var login = tokenService.validateToken(token);
 
-				if (user != null) {
-					// ✅ Usando Collections.singletonList para "ROLE_USER"
-					var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
-					var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
-					SecurityContextHolder.getContext().setAuthentication(authentication);
-				}
-			}
-		}
+            if (login != null) {
+                User user = userRepository.findByEmail(login).orElseThrow(() -> new RuntimeException("User Not Found"));
 
-		filterChain.doFilter(request, response);
-	}
+                if (user != null) {
+                    var authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+                    var authentication = new UsernamePasswordAuthenticationToken(user, null, authorities);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            }
+        }
 
-	private String recoverToken(HttpServletRequest request) {
-		var authHeader = request.getHeader("Authorization");
+        filterChain.doFilter(request, response);
+    }
 
-		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-			return null;
-		}
+    private String recoverToken(HttpServletRequest request) {
+        var authHeader = request.getHeader("Authorization");
 
-		return authHeader.replace("Bearer ", "");
-	}
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+
+        return authHeader.replace("Bearer ", "");
+    }
 }
